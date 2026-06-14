@@ -1,0 +1,21 @@
+===============================================================================
+
+PunditPanel installed!
+
+Next steps:
+
+1. Run the migration:
+   bin/rails db:migrate
+
+2. Configure the panel in config/initializers/pundit_panel.rb
+   - Set user_model to your auth model (e.g., "Admin")
+   - Set auth_method to your authentication before_action
+   - Set role_attribute to the enum column (for :enum adapter)
+
+3. Visit /pundit_panel to manage permissions
+
+4. (Optional) To use DB-backed permissions in your policies,
+   update app/policies/application_policy.rb to inherit from
+   PunditPanel::ApplicationPolicy instead of a plain class.
+
+===============================================================================

@@ -1,0 +1,55 @@
+<%
+  user_label = if user.respond_to?(:email) && user.email.present?
+                 user.email
+               elsif user.respond_to?(:name) && user.name.present?
+                 user.name
+               else
+                 user.to_s
+               end
+  adapter      = PunditPanel.config.adapter_instance
+  current_role = adapter.user_role(user)
+%>
+<%= turbo_frame_tag "user_#{user.id}" do %>
+  <tr class="<%= idx.even? ? 'bg-white' : 'bg-gray-50' %> hover:bg-blue-50/30 transition-colors">
+    <td class="px-5 py-3 text-gray-400 font-mono text-xs"><%= user.id %></td>
+
+    <td class="px-5 py-3">
+      <div class="flex items-center gap-2.5">
+        <div class="flex-shrink-0 w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center">
+          <span class="text-xs font-semibold text-blue-700"><%= user_label.to_s.first.upcase %></span>
+        </div>
+        <span class="font-medium text-gray-800 truncate max-w-xs"><%= user_label %></span>
+      </div>
+    </td>
+
+    <td class="px-5 py-3">
+      <% if current_role.present? %>
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+          <%= adapter.role_label(current_role) %>
+        </span>
+      <% else %>
+        <span class="text-xs text-gray-400 italic">none</span>
+      <% end %>
+    </td>
+
+    <td class="px-5 py-3">
+      <%= form_with url: pundit_panel.update_role_user_path(user),
+                    method: :patch,
+                    data: { turbo: true },
+                    class: "inline-block" do |f| %>
+        <select name="role"
+                onchange="this.form.requestSubmit()"
+                class="block w-full rounded-md border border-gray-300 bg-white py-1.5 pl-3 pr-8
+                       text-sm text-gray-700 shadow-sm focus:border-blue-500 focus:outline-none
+                       focus:ring-1 focus:ring-blue-500 hover:border-blue-400 transition-colors cursor-pointer">
+          <% roles.each do |role| %>
+            <option value="<%= adapter.role_to_param(role) %>"
+                    <%= "selected" if adapter.role_to_param(current_role) == adapter.role_to_param(role) %>>
+              <%= adapter.role_label(role) %>
+            </option>
+          <% end %>
+        </select>
+      <% end %>
+    </td>
+  </tr>
+<% end %>

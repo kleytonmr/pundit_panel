@@ -1,0 +1,150 @@
+<%# ─── Page header ─────────────────────────────────────────────────────── %>
+<div class="mb-6">
+  <h1 class="text-2xl font-bold text-gray-900 tracking-tight">Users</h1>
+  <p class="mt-1 text-sm text-gray-500">
+    Assign roles to users. Changes apply immediately.
+  </p>
+</div>
+
+<% if @users.empty? %>
+  <%# ─── Empty state ──────────────────────────────────────────────────── %>
+  <div class="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200
+              bg-gray-50 py-20 px-8 text-center">
+    <svg class="w-12 h-12 text-gray-300 mb-4" fill="none" stroke="currentColor" stroke-width="1.5"
+         viewBox="0 0 24 24" aria-hidden="true">
+      <path stroke-linecap="round" stroke-linejoin="round"
+            d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0
+               0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
+    </svg>
+    <h2 class="text-lg font-semibold text-gray-700 mb-1">No users found</h2>
+    <p class="text-sm text-gray-500 max-w-sm">
+      There are no users in the system yet. Users will appear here once they are created.
+    </p>
+  </div>
+
+<% else %>
+  <%# ─── User count ────────────────────────────────────────────────────── %>
+  <p class="mb-4 text-sm text-gray-500">
+    <span class="font-semibold text-gray-700"><%= @users.size %></span>
+    <%= "user".pluralize(@users.size) %> total
+  </p>
+
+  <%# ─── Table wrapper ────────────────────────────────────────────────── %>
+  <div class="overflow-x-auto rounded-xl border border-gray-200 shadow-sm">
+    <table class="min-w-full divide-y divide-gray-200 text-sm">
+
+      <%# ── Column headers ─────────────────────────────────────────────── %>
+      <thead class="bg-gray-50">
+        <tr>
+          <th scope="col"
+              class="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 w-16">
+            ID
+          </th>
+          <th scope="col"
+              class="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+            User
+          </th>
+          <th scope="col"
+              class="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 w-36">
+            Current Role
+          </th>
+          <th scope="col"
+              class="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 w-48">
+            Change Role
+          </th>
+        </tr>
+      </thead>
+
+      <%# ── Table body ──────────────────────────────────────────────────── %>
+      <tbody class="bg-white divide-y divide-gray-100">
+
+        <% @users.each_with_index do |user, idx| %>
+          <%
+            user_label = if user.respond_to?(:email) && user.email.present?
+                           user.email
+                         elsif user.respond_to?(:name) && user.name.present?
+                           user.name
+                         else
+                           user.to_s
+                         end
+
+            current_role = user.public_send(PunditPanel.config.role_attribute)
+          %>
+
+          <%# Each row is its own Turbo Frame so only that row re-renders on role change %>
+          <%= turbo_frame_tag "user_#{user.id}" do %>
+            <tr class="<%= idx.even? ? 'bg-white' : 'bg-gray-50' %> hover:bg-blue-50/30 transition-colors">
+
+              <%# ID %>
+              <td class="px-5 py-3 text-gray-400 font-mono text-xs">
+                <%= user.id %>
+              </td>
+
+              <%# Email / Name %>
+              <td class="px-5 py-3">
+                <div class="flex items-center gap-2.5">
+                  <div class="flex-shrink-0 w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center">
+                    <span class="text-xs font-semibold text-blue-700">
+                      <%= user_label.to_s.first.upcase %>
+                    </span>
+                  </div>
+                  <span class="font-medium text-gray-800 truncate max-w-xs">
+                    <%= user_label %>
+                  </span>
+                </div>
+              </td>
+
+              <%# Current role badge %>
+              <td class="px-5 py-3">
+                <% if current_role.present? %>
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                               bg-blue-100 text-blue-800">
+                    <%= current_role.to_s.humanize %>
+                  </span>
+                <% else %>
+                  <span class="text-xs text-gray-400 italic">none</span>
+                <% end %>
+              </td>
+
+              <%# Change role — dropdown form %>
+              <td class="px-5 py-3">
+                <%= form_with url: pundit_panel.update_user_role_path(user),
+                              method: :patch,
+                              data: { turbo: true },
+                              class: "inline-block" do |f| %>
+                  <select name="role"
+                          onchange="this.form.requestSubmit()"
+                          class="block w-full rounded-md border border-gray-300 bg-white py-1.5 pl-3 pr-8
+                                 text-sm text-gray-700 shadow-sm
+                                 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500
+                                 hover:border-blue-400 transition-colors cursor-pointer"
+                          aria-label="Change role for <%= user_label %>">
+                    <% @roles.each do |role| %>
+                      <option value="<%= current_adapter.role_to_param(role) %>"
+                              <%= "selected" if current_adapter.role_to_param(current_role) == current_adapter.role_to_param(role) %>>
+                        <%= current_adapter.role_label(role) %>
+                      </option>
+                    <% end %>
+                  </select>
+                <% end %>
+              </td>
+
+            </tr>
+          <% end %>
+        <% end %>
+
+      </tbody>
+    </table>
+  </div>
+
+  <%# ─── Legend ──────────────────────────────────────────────────────────── %>
+  <div class="mt-4 flex items-center gap-1.5 text-xs text-gray-500">
+    <svg class="w-3.5 h-3.5 text-blue-500" fill="none" stroke="currentColor" stroke-width="2"
+         viewBox="0 0 24 24" aria-hidden="true">
+      <path stroke-linecap="round" stroke-linejoin="round"
+            d="M13 10V3L4 14h7v7l9-11h-7z"/>
+    </svg>
+    <span>Role changes apply instantly via Turbo</span>
+  </div>
+
+<% end %>

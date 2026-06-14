@@ -1,0 +1,175 @@
+<%# ─── Page header ─────────────────────────────────────────────────────── %>
+<div class="mb-6">
+  <h1 class="text-2xl font-bold text-gray-900 tracking-tight">Permissions Matrix</h1>
+  <p class="mt-1 text-sm text-gray-500">
+    Toggle each cell to grant or revoke a role's access to a policy action.
+    Changes are applied immediately.
+  </p>
+</div>
+
+<% if @policies.empty? %>
+  <%# ─── Empty state ─────────────────────────────────────────────────── %>
+  <div class="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200
+              bg-gray-50 py-20 px-8 text-center">
+    <svg class="w-12 h-12 text-gray-300 mb-4" fill="none" stroke="currentColor" stroke-width="1.5"
+         viewBox="0 0 24 24" aria-hidden="true">
+      <path stroke-linecap="round" stroke-linejoin="round"
+            d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0
+               002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0
+               00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/>
+    </svg>
+    <h2 class="text-lg font-semibold text-gray-700 mb-1">No policies found</h2>
+    <p class="text-sm text-gray-500 max-w-sm">
+      PunditPanel could not detect any Pundit policy classes.
+      Make sure your policy files live in <code class="bg-gray-100 px-1 rounded font-mono text-xs">app/policies/</code>
+      and inherit from <code class="bg-gray-100 px-1 rounded font-mono text-xs">ApplicationPolicy</code>.
+    </p>
+  </div>
+
+<% else %>
+  <%# ─── Compute per-role grant counts for column headers ──────────────── %>
+  <%
+    role_grant_counts = @roles.each_with_object({}) do |role, counts|
+      counts[role] = @matrix.sum do |_policy_class, actions|
+        actions.sum { |_action, roles_hash| roles_hash[role] ? 1 : 0 }
+      end
+    end
+
+    total_cells = @matrix.sum { |_pc, actions| actions.size }
+  %>
+
+  <%# ─── Table wrapper (horizontal scroll on small screens) ────────────── %>
+  <div class="overflow-x-auto rounded-xl border border-gray-200 shadow-sm">
+    <table class="min-w-full divide-y divide-gray-200 text-sm">
+
+      <%# ── Column headers ──────────────────────────────────────────────── %>
+      <thead class="bg-gray-50">
+        <tr>
+          <th scope="col"
+              class="sticky left-0 z-10 bg-gray-50 px-5 py-4 text-left text-xs font-semibold
+                     uppercase tracking-wider text-gray-500 w-64 border-r border-gray-200">
+            Policy / Action
+          </th>
+
+          <% @roles.each do |role| %>
+            <th scope="col"
+                class="px-4 py-4 text-center text-xs font-semibold uppercase tracking-wider text-gray-500 min-w-[8rem]">
+              <span class="block text-gray-800 font-bold text-sm normal-case tracking-normal mb-0.5">
+                <%= current_adapter.role_label(role) %>
+              </span>
+              <span class="inline-flex items-center gap-1 text-blue-600 font-medium">
+                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                  <path fill-rule="evenodd"
+                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0
+                           011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                        clip-rule="evenodd"/>
+                </svg>
+                <%= role_grant_counts[role] %> / <%= total_cells %>
+              </span>
+            </th>
+          <% end %>
+        </tr>
+      </thead>
+
+      <%# ── Table body ───────────────────────────────────────────────────── %>
+      <tbody class="bg-white divide-y divide-gray-100">
+
+        <% @matrix.each_with_index do |(policy_class, actions), policy_idx| %>
+
+          <%# Policy name header row %>
+          <tr class="bg-blue-50 border-t-2 border-blue-100">
+            <td colspan="<%= @roles.size + 1 %>"
+                class="sticky left-0 z-10 bg-blue-50 px-5 py-2.5 border-r border-blue-100">
+              <div class="flex items-center gap-2">
+                <svg class="w-4 h-4 text-blue-500 flex-shrink-0" fill="none" stroke="currentColor"
+                     stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <span class="text-sm font-semibold text-blue-800 tracking-tight">
+                  <%= policy_class.to_s.gsub("::", " :: ") %>
+                </span>
+                <span class="ml-1 text-xs text-blue-500 font-normal">
+                  (<%= actions.size %> <%= "action".pluralize(actions.size) %>)
+                </span>
+              </div>
+            </td>
+          </tr>
+
+          <%# Action sub-rows %>
+          <% actions.each_with_index do |(action, roles_hash), action_idx| %>
+            <tr class="<%= action_idx.even? ? 'bg-white' : 'bg-gray-50' %> hover:bg-blue-50/30 transition-colors">
+
+              <%# Action name cell %>
+              <td class="sticky left-0 z-10 px-5 py-3 border-r border-gray-200
+                         <%= action_idx.even? ? 'bg-white' : 'bg-gray-50' %> hover:bg-blue-50/30 transition-colors">
+                <span class="pl-4 font-mono text-xs text-gray-600">
+                  <%= action.to_s %>
+                </span>
+              </td>
+
+              <%# One checkbox cell per role %>
+              <% @roles.each do |role| %>
+                <%
+                  role_param   = current_adapter.role_to_param(role)
+                  permitted    = roles_hash[role]
+                  dom_id_value = "permission_#{role_param}_#{policy_class}_#{action}"
+                                   .gsub("::", "_")
+                                   .gsub(/\W/, "_")
+                %>
+                <td id="<%= dom_id_value %>"
+                    class="px-4 py-3 text-center">
+                  <%= form_with url: pundit_panel.toggle_permissions_path,
+                                method: :patch,
+                                data: { turbo: true },
+                                class: "inline-flex items-center justify-center" do |f| %>
+                    <%= f.hidden_field :role,         value: role_param %>
+                    <%= f.hidden_field :policy_class, value: policy_class %>
+                    <%= f.hidden_field :action,       value: action %>
+
+                    <input type="checkbox"
+                           name="permitted"
+                           value="1"
+                           <%= "checked" if permitted %>
+                           class="h-4 w-4 rounded border-gray-300 text-blue-600 shadow-sm
+                                  focus:ring-blue-500 focus:ring-offset-0 cursor-pointer
+                                  transition-colors"
+                           title="<%= permitted ? 'Permitted — click to revoke' : 'Denied — click to grant' %>"
+                           aria-label="<%= current_adapter.role_label(role) %> <%= action %> on <%= policy_class %>"
+                           onchange="this.form.requestSubmit()">
+                  <% end %>
+                </td>
+              <% end %>
+
+            </tr>
+          <% end %>
+
+        <% end %>
+      </tbody>
+
+    </table>
+  </div>
+
+  <%# ─── Legend ──────────────────────────────────────────────────────────── %>
+  <div class="mt-4 flex items-center gap-6 text-xs text-gray-500">
+    <div class="flex items-center gap-1.5">
+      <input type="checkbox" checked disabled
+             class="h-3.5 w-3.5 rounded border-gray-300 text-blue-600 cursor-default">
+      <span>Permitted</span>
+    </div>
+    <div class="flex items-center gap-1.5">
+      <input type="checkbox" disabled
+             class="h-3.5 w-3.5 rounded border-gray-300 text-gray-300 cursor-default">
+      <span>Denied</span>
+    </div>
+    <div class="flex items-center gap-1.5">
+      <svg class="w-3.5 h-3.5 text-blue-500" fill="none" stroke="currentColor" stroke-width="2"
+           viewBox="0 0 24 24" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round"
+              d="M13 10V3L4 14h7v7l9-11h-7z"/>
+      </svg>
+      <span>Changes apply instantly via Turbo</span>
+    </div>
+  </div>
+
+<% end %>

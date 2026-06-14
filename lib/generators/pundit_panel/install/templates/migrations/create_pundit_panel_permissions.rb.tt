@@ -1,0 +1,16 @@
+class CreatePunditPanelPermissions < ActiveRecord::Migration[<%= ActiveRecord::Migration.current_version %>]
+  def change
+    create_table :pundit_panel_permissions do |t|
+      t.string  :role,         null: false
+      t.string  :policy_class, null: false
+      t.string  :action,       null: false
+      t.boolean :permitted,    null: false, default: false
+      t.timestamps
+    end
+
+    add_index :pundit_panel_permissions,
+              [:role, :policy_class, :action],
+              unique: true,
+              name: "idx_pundit_panel_permissions_unique"
+  end
+end

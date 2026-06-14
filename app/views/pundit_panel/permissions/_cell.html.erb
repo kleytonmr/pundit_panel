@@ -1,0 +1,20 @@
+<td id="<%= "permission_#{role_param}_#{policy_class}_#{action}".gsub('::', '_').gsub(/\W/, '_') %>"
+    class="px-4 py-3 text-center">
+  <%= form_with url: pundit_panel.toggle_permissions_path,
+                method: :patch,
+                data: { turbo: true },
+                class: "inline-flex items-center justify-center" do |f| %>
+    <%= f.hidden_field :role,         value: role_param %>
+    <%= f.hidden_field :policy_class, value: policy_class %>
+    <%= f.hidden_field :action,       value: action %>
+
+    <input type="checkbox"
+           name="permitted"
+           value="1"
+           <%= "checked" if permitted %>
+           class="h-4 w-4 rounded border-gray-300 text-blue-600 shadow-sm
+                  focus:ring-blue-500 focus:ring-offset-0 cursor-pointer transition-colors"
+           title="<%= permitted ? 'Permitted — click to revoke' : 'Denied — click to grant' %>"
+           onchange="this.form.requestSubmit()">
+  <% end %>
+</td>
